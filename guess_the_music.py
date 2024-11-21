@@ -1,96 +1,111 @@
 import pygame
-import os
 import random
-import sys
+import time
 
 # Initialize Pygame
 pygame.init()
 
-# Window setup
-WIDTH, HEIGHT = 600, 400
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Guess the Music")
+# Constants
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+FPS = 60
+ARROW_SPEED = 5  # Speed of arrow movement
+ARROW_SIZE = 50  # Size of the arrows
+MARGIN = 100  # Space from the bottom where arrows appear
+KEYS = ['LEFT', 'DOWN', 'UP', 'RIGHT']  # Direction keys
 
 # Colors
 WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
+LIGHT_BLUE = (0, 255, 255)
 
-# Load music files from the 'music' directory
-MUSIC_FOLDER = "music"
-music_files = [file for file in os.listdir(MUSIC_FOLDER) if file.endswith(('.mp3', '.ogg'))]
+# Initialize screen
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption('Friday Night Funkin\'-like Game')
 
-# Game variables
-score = 0
-current_track = ""
-current_track_name = ""
+# Font
+font = pygame.font.Font(None, 36)
 
-# Font setup
-font = pygame.font.SysFont("Arial", 24)
+# Arrow class
+class Arrow:
+    def __init__(self, direction, x, y):
+        self.direction = direction
+        self.x = x
+        self.y = y
+        self.color = LIGHT_BLUE
+        self.key = direction
 
-# Function to draw text on screen
-def draw_text(text, x, y, color=BLACK):
-    label = font.render(text, True, color)
-    screen.blit(label, (x, y))
+    def move(self):
+        self.y += ARROW_SPEED
 
-# Function to play a random music track
-def play_random_music():
-    global current_track, current_track_name
-    if music_files:
-        current_track = random.choice(music_files)
-        current_track_name = os.path.splitext(current_track)[0]  # Remove extension
-        pygame.mixer.music.load(os.path.join(MUSIC_FOLDER, current_track))
-        pygame.mixer.music.play(loops=0, start=0.0)
+    def draw(self, surface):
+        pygame.draw.rect(surface, self.color, pygame.Rect(self.x, self.y, ARROW_SIZE, ARROW_SIZE))
+        text = font.render(self.key, True, WHITE)
+        surface.blit(text, (self.x + ARROW_SIZE // 4, self.y + ARROW_SIZE // 4))
 
-# Main game loop
-running = True
-input_text = ""
-while running:
-    screen.fill(WHITE)
+# Game loop
+def game_loop():
+    clock = pygame.time.Clock()
+    arrows = []
+    score = 0
+    running = True
+    last_arrow_time = time.time()
+    pressed_keys = set()  # To track pressed keys
 
-    # Draw score and instructions
-    draw_text(f"Score: {score}", 10, 10)
-    draw_text("Guess the track name:", 10, 40)
-    draw_text(f"Track: {current_track_name if input_text else '???'}", 10, 80)
+    while running:
+        screen.fill((0, 0, 0))  # Background color
 
-    # Draw player input box
-    pygame.draw.rect(screen, BLACK, (10, 120, 580, 40), 2)
-    draw_text(input_text, 20, 125)
-
-    # Draw button hints
-    draw_text("Press Enter to submit guess", 10, 170)
-    draw_text("Press Q to quit", 10, 200)
-
-    # Event handling
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_RETURN:  # Enter key to submit guess
-                if input_text.lower() == current_track_name.lower():
-                    score += 1
-                    draw_text("Correct! +1 Point!", 10, 250, color=(0, 255, 0))
-                else:
-                    draw_text(f"Wrong! The track was: {current_track_name}", 10, 250, color=(255, 0, 0))
-                input_text = ""  # Clear input box after each guess
-                pygame.time.delay(1000)  # Pause for 1 second before next track
-                play_random_music()  # Play next track
-            elif event.key == pygame.K_q:  # Press Q to quit
+        # Handle events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
                 running = False
-            elif event.key == pygame.K_BACKSPACE:  # Backspace to remove last character
-                input_text = input_text[:-1]
-            else:
-                input_text += event.unicode  # Add typed character to input text
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    pressed_keys.add('LEFT')
+                elif event.key == pygame.K_DOWN:
+                    pressed_keys.add('DOWN')
+                elif event.key == pygame.K_UP:
+                    pressed_keys.add('UP')
+                elif event.key == pygame.K_RIGHT:
+                    pressed_keys.add('RIGHT')
+            elif event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT:
+                    pressed_keys.discard('LEFT')
+                elif event.key == pygame.K_DOWN:
+                    pressed_keys.discard('DOWN')
+                elif event.key == pygame.K_UP:
+                    pressed_keys.discard('UP')
+                elif event.key == pygame.K_RIGHT:
+                    pressed_keys.discard('RIGHT')
 
-    # Start playing a track if not already playing
-    if not pygame.mixer.music.get_busy() and current_track_name == "":
-        play_random_music()
+        # Generate arrows at regular intervals
+        if time.time() - last_arrow_time > 1:  # Generate an arrow every 1 second
+            last_arrow_time = time.time()
+            direction = random.choice(KEYS)
+            x_pos = SCREEN_WIDTH // 2 - ARROW_SIZE // 2
+            arrows.append(Arrow(direction, x_pos, MARGIN))
+        
+        # Move arrows and check for input
+        for arrow in arrows[:]:
+            arrow.move()
+            if arrow.y > SCREEN_HEIGHT:
+                arrows.remove(arrow)
+            elif arrow.y > SCREEN_HEIGHT - 100 and arrow.key in pressed_keys:
+                score += 10
+                arrows.remove(arrow)
 
-    # Update the screen
-    pygame.display.flip()
+            arrow.draw(screen)
 
-    # Control frame rate
-    pygame.time.Clock().tick(30)
+        # Display score
+        score_text = font.render(f'Score: {score}', True, WHITE)
+        screen.blit(score_text, (10, 10))
 
-# Quit Pygame
-pygame.quit()
-sys.exit()
+        pygame.display.flip()
+        clock.tick(FPS)
+
+    pygame.quit()
+
+# Run the game loop
+game_loop()
