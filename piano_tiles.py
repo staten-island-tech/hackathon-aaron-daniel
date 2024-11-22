@@ -6,7 +6,7 @@ pygame.init()
 pygame.mixer.init()
 
 # Set up the screen
-WIDTH, HEIGHT = 800, 400
+WIDTH, HEIGHT = 1000, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Piano Game")
 
