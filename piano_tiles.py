@@ -1,101 +1,98 @@
 import pygame
-import random
-import time
+import os
 
-# Initialize Pygame
+# Initialize pygame and the mixer
 pygame.init()
+pygame.mixer.init()
 
-# Screen dimensions
-WIDTH, HEIGHT = 400, 600
+# Set up the screen
+WIDTH, HEIGHT = 800, 400
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption('Infinite Piano Tiles')
+pygame.display.set_caption("Piano Game")
 
-# Colors
+# Define colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-GRAY = (200, 200, 200)
+GRAY = (169, 169, 169)  # Gray color for pressed keys
+YELLOW = (255, 255, 0)  # Highlight color for pressed key
 
-# Font for score
-font = pygame.font.SysFont('Arial', 30)
-
-# Tile properties
-TILE_WIDTH = WIDTH // 4
-TILE_HEIGHT = 100
-TILE_SPEED = 5  # Speed of falling tiles
-
-# Game variables
-score = 0
-game_running = True
-tile_list = []
-
-# Define key mappings for A, S, K, L
-KEY_MAPPING = {
-    pygame.K_a: 0,  # Leftmost column
-    pygame.K_s: 1,  # Second column
-    pygame.K_k: 2,  # Third column
-    pygame.K_l: 3,  # Rightmost column
+# Define piano keys
+WHITE_KEYS = ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L']
+BLACK_KEYS = ['W', 'E', 'T', 'Y', 'U', 'O', 'P']
+NOTE_SOUNDS = {
+    'A': 'sounds/note_C.wav', 'S': 'sounds/note_D.wav', 'D': 'sounds/note_E.wav',
+    'F': 'sounds/note_F.wav', 'G': 'sounds/note_G.wav', 'H': 'sounds/note_A.wav',
+    'J': 'sounds/note_B.wav', 'K': 'sounds/note_C_high.wav', 'L': 'sounds/note_D_high.wav',
+    'W': 'sounds/note_C_sharp.wav', 'E': 'sounds/note_D_sharp.wav', 'T': 'sounds/note_F_sharp.wav',
+    'Y': 'sounds/note_G_sharp.wav', 'U': 'sounds/note_A_sharp.wav', 'O': 'sounds/note_C_high_sharp.wav',
+    'P': 'sounds/note_D_high_sharp.wav'
 }
 
-# Function to create new tiles
-def create_tile():
-    x = random.randint(0, 3) * TILE_WIDTH  # Random x position for the tile
-    y = -TILE_HEIGHT  # Start from the top of the screen
-    tile_list.append(pygame.Rect(x, y, TILE_WIDTH, TILE_HEIGHT))
+# Load sounds
+for key, sound_file in NOTE_SOUNDS.items():
+    if os.path.exists(sound_file):
+        NOTE_SOUNDS[key] = pygame.mixer.Sound(sound_file)
+    else:
+        NOTE_SOUNDS[key] = None  # Placeholder for non-existent sound files
 
-# Function to draw the game screen
-def draw_game():
-    screen.fill(WHITE)
+# Define key dimensions
+WHITE_KEY_WIDTH = WIDTH // len(WHITE_KEYS)
+BLACK_KEY_WIDTH = WHITE_KEY_WIDTH // 2
+BLACK_KEY_HEIGHT = HEIGHT // 2
+
+key_pressed = set()
+
+# Draw the piano keys
+def draw_piano(pressed_key=None):
+    # Draw white keys
+    for i, key in enumerate(WHITE_KEYS):
+        rect = pygame.Rect(i * WHITE_KEY_WIDTH, 0, WHITE_KEY_WIDTH, HEIGHT)
+        color = WHITE
+        if pressed_key == key:
+            color = GRAY  # Gray when pressed
+        pygame.draw.rect(screen, color, rect)
+        pygame.draw.rect(screen, BLACK, rect, 2)  # Outline
     
-    # Draw tiles
-    for tile in tile_list:
-        pygame.draw.rect(screen, BLACK, tile)
+    # Draw black keys
+    for i, key in enumerate(BLACK_KEYS):
+        black_key_x = (i + 1) * WHITE_KEY_WIDTH - BLACK_KEY_WIDTH // 2
+        rect = pygame.Rect(black_key_x, 0, BLACK_KEY_WIDTH, BLACK_KEY_HEIGHT)
+        color = BLACK
+        if pressed_key == key:
+            color = GRAY  # Gray when pressed
+        pygame.draw.rect(screen, color, rect)
+        pygame.draw.rect(screen, WHITE, rect, 2)  # Outline
 
-    # Draw score
-    score_text = font.render(f"Score: {score}", True, BLACK)
-    screen.blit(score_text, (10, 10))
-
-    pygame.display.update()
-
-# Function to handle tile movements and score
-def handle_tiles():
-    global score, game_running
-    for tile in tile_list:
-        tile.y += TILE_SPEED  # Move the tile down
-
-        # Check if the tile reaches the bottom of the screen
-        if tile.y >= HEIGHT:
-            tile_list.remove(tile)  # Remove the tile if it falls off
-            game_running = False  # Game over if a tile falls off
+def play_sound(key):
+    if NOTE_SOUNDS.get(key) and key not in key_pressed:
+        key_pressed.add(key)
+        pygame.mixer.stop()  # Stop the current sound
+        NOTE_SOUNDS[key].play()
 
 # Main game loop
-while game_running:
-    # Event handling
+running = True
+pressed_key = None  # Track the last pressed key
+while running:
+    screen.fill((200, 200, 200))  # Set background color to light gray
+
+    # Handle events
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            game_running = False
-        elif event.type == pygame.KEYDOWN:
-            if event.key in KEY_MAPPING:
-                column = KEY_MAPPING[event.key]
-                # Check if there's a tile in the pressed column and remove it
-                for tile in tile_list:
-                    if tile.x // TILE_WIDTH == column and tile.y + TILE_HEIGHT >= HEIGHT - TILE_SPEED:
-                        tile_list.remove(tile)  # Remove the clicked tile
-                        score += 1  # Increase score
-                        break
+            running = False
 
-    # Add a new tile every 1 second
-    if random.random() < 0.02:  # Adjust the frequency of new tiles
-        create_tile()
+        if event.type == pygame.KEYDOWN:
+            key = pygame.key.name(event.key).upper()
+            if key in NOTE_SOUNDS:
+                pressed_key = key  # Store the key pressed
+                play_sound(key)
 
-    # Handle tile movement and game logic
-    handle_tiles()
+        if event.type == pygame.KEYUP:
+            key = pygame.key.name(event.key).upper()
+            if key in NOTE_SOUNDS:
+                pressed_key = None  # Reset when key is released
 
-    # Draw the game screen
-    draw_game()
+    draw_piano(pressed_key)  # Draw the piano with the pressed key highlighted
 
-    # Control the frame rate
-    pygame.time.Clock().tick(60)  # 60 frames per second
+    pygame.display.flip()  # Update the screen
 
-# Game Over
 pygame.quit()
-print(f"Game Over! Final Score: {score}")
