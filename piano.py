@@ -66,7 +66,6 @@ def draw_piano(pressed_key=None):
 def play_sound(key):
     if NOTE_SOUNDS.get(key) and key not in key_pressed:
         key_pressed.add(key)
-        pygame.mixer.stop()  # Stop the current sound
         NOTE_SOUNDS[key].play()
 
 # Main game loop
