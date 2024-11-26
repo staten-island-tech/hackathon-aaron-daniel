@@ -40,7 +40,7 @@ WHITE_KEY_WIDTH = WIDTH // len(WHITE_KEYS)
 BLACK_KEY_WIDTH = WHITE_KEY_WIDTH // 2
 BLACK_KEY_HEIGHT = HEIGHT // 2
 
-key_pressed = set()
+key_pressed = set()  # To track which keys are pressed
 
 # Draw the piano keys
 def draw_piano(pressed_key=None):
@@ -65,8 +65,12 @@ def draw_piano(pressed_key=None):
 
 def play_sound(key):
     if NOTE_SOUNDS.get(key) and key not in key_pressed:
-        key_pressed.add(key)
-        NOTE_SOUNDS[key].play()
+        NOTE_SOUNDS[key].play()  # Play the sound once
+        key_pressed.add(key)  # Mark the key as pressed
+def stop_sound(key):
+    if NOTE_SOUNDS.get(key) and key in key_pressed:
+        NOTE_SOUNDS[key].stop()  # Stop the sound when the key is released
+        key_pressed.remove(key)  # Mark the key as not pressed
 
 # Main game loop
 running = True
@@ -81,7 +85,7 @@ while running:
 
         if event.type == pygame.KEYDOWN:
             key = pygame.key.name(event.key).upper()
-            if key in NOTE_SOUNDS:
+            if key in NOTE_SOUNDS and key not in key_pressed:  # Only play if not already pressed
                 pressed_key = key  # Store the key pressed
                 play_sound(key)
 
@@ -89,6 +93,7 @@ while running:
             key = pygame.key.name(event.key).upper()
             if key in NOTE_SOUNDS:
                 pressed_key = None  # Reset when key is released
+                stop_sound(key)
 
     draw_piano(pressed_key)  # Draw the piano with the pressed key highlighted
 
